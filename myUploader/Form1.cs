@@ -25,7 +25,8 @@ namespace myUploader
         public Form1()
         {
             InitializeComponent();
-            button1_Click();
+            execute();
+            
         }
 
 
@@ -53,7 +54,7 @@ namespace myUploader
             }
         }
 
-        private void button1_Click()//(object sender, EventArgs e)
+        private void execute()
         {
             ftpUpload fu = new ftpUpload();
 
@@ -62,8 +63,19 @@ namespace myUploader
             fu.Username = "anonymous";
             fu.Password = "anonymous@anon.de";
             FtpFolder = "pub/uniface/patches/9602/w32/";
-            
-            FileVersionInfo fvi = FileVersionInfo.GetVersionInfo("U:\\uniface\\bin\\uniface.exe");
+
+            FileVersionInfo fvi = null;
+            try
+            {
+                fvi = FileVersionInfo.GetVersionInfo("U:\\uniface\\bin\\uniface.exe");
+
+            }
+            catch
+            {
+                MessageBox.Show("Uniface.exe not found in current path!");
+                System.Environment.Exit(1);
+                   
+            }
 
             string Uniface96Version = fvi.ProductPrivatePart.ToString();
 
@@ -126,5 +138,6 @@ namespace myUploader
         private static void NotifyIconDoubleClick(Object sender, EventArgs e)
         {
         }
+
     }
 }
