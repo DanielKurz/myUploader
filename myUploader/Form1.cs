@@ -9,7 +9,8 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.IO;
 using System.Diagnostics;
-
+using System.Xml;
+using System.Configuration;
 
 namespace myUploader
 {
@@ -28,18 +29,20 @@ namespace myUploader
         {
             InitializeComponent();
 
-
+            readConfigFile();
+            
             // NotifyIcon erzeugen
             notico = new NotifyIcon();
             notico.Icon = new Icon("c:\\temp\\dpk.ico"); // Eigenes Icon einsetzen
             notico.DoubleClick += new EventHandler(NotifyIconDoubleClick);
 
-            execute();
+            if (textBox1.Text != "" & textBox2.Text != "")
+            {
+                execute();
 
-            // Automatischer Check alle x-Sekunden
-            //timer1.Interval = 3600000; // Stunde
-            timer1.Interval = 20000; // 20 Sekunden
-            timer1.Start();
+                timer1.Interval = Convert.ToInt32(textBox2.Text) * 60000; //Sekunden
+                timer1.Start();
+            }
             
         }
 
@@ -79,7 +82,7 @@ namespace myUploader
             string pathToApplication = null;
             FileInfo fi = null;
 
-            pathToApplication = "U:\\uniface\\bin\\uniface.exe";
+            pathToApplication = textBox1.Text; //"U:\\uniface\\bin\\uniface.exe";
 
             try
             {
@@ -104,8 +107,6 @@ namespace myUploader
             }
 
             unifaceVersion = fvi.ProductPrivatePart.ToString();
-            //notico.ShowBalloonTip(10, "Suche nach Updates", fi.Name+" (" + DateTime.Now.ToLocalTime() + ")", ToolTipIcon.Info);
-
 
             // FTP Objekt
             ftpUpload fu = new ftpUpload();
@@ -144,14 +145,14 @@ namespace myUploader
             addMenu("-", "sep");        // Seperator-Bar (Trennlinie)
             addMenu("Beenden", "exit"); // Das ist das Beenden Button im Contextmenu
 
-            if (contextMenu.MenuItems.Count > 2) // Seperator + Beenden
-            {
-                notico.ShowBalloonTip(5, "Updates gefunden!", fi.Name+ " " +fvi.FileVersion+" ("+DateTime.Now.ToLocalTime().ToString()+")", ToolTipIcon.Info);
-            }
-            
             notico.Text = "Uniface Update Check";   // Eigenen Text einsetzen
             notico.Visible = true;
             notico.ContextMenu = contextMenu;
+
+            if (contextMenu.MenuItems.Count > 2) // Seperator + Beenden
+            {
+                notico.ShowBalloonTip(5, "Updates gefunden!", fi.Name+ " " +fvi.FileVersion+" ("+DateTime.Now.ToLocalTime().ToString()+")", ToolTipIcon.Info);
+            }           
             
 
         }
@@ -189,6 +190,91 @@ namespace myUploader
         {
             contextMenu.MenuItems.Clear();
             execute();
+        }
+
+        private void readConfigFile()
+        {
+
+            if (File.Exists("ufupdateconfig.xml"))
+            {
+                XmlDocument doc = new XmlDocument();
+                doc.Load("ufupdateconfig.xml");
+
+
+                 XmlElement root = doc.DocumentElement;
+                foreach (XmlNode @parameter in root.ChildNodes)
+                {
+                    textBox1.Text = @parameter.Attributes["param1"].InnerText;
+                    textBox2.Text = @parameter.Attributes["param2"].InnerText;
+                }
+
+            }
+            else
+            {
+                MessageBox.Show("Es wurden noch keine Konfiguration vorgenommen!");
+            }
+        }
+
+        private void button2_Click(object sender, EventArgs e)
+        {
+            openFileDialog1.Title = "Uniface Applikation suchen...";
+            openFileDialog1.Multiselect = false;
+            openFileDialog1.InitialDirectory = "U:\\uniface\\bin\\";
+            openFileDialog1.FileName = "Uniface.exe";
+            openFileDialog1.ShowDialog();
+            textBox1.Text = openFileDialog1.FileName;
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            if(textBox1.Text == "")
+            {
+                MessageBox.Show("Pfad zur Uniface Executable wurde nicht eingegeben, abbruch!");
+                return;
+            }
+                
+            if(textBox2.Text == "")
+            {
+                MessageBox.Show("Intervallänge wurde nicht einegeben, abbruch!");
+                return;
+            }
+
+            if (File.Exists("ufupdateconfig.xml"))
+            {
+                try
+                {
+                    File.Delete("ufupdateconfig.xml");
+                }
+                catch
+                {
+                    // Not yet.
+                }
+
+                
+            }
+
+            XmlDocument doc = new XmlDocument();
+            XmlNode myRoot;
+            XmlNode myNode;
+            XmlAttribute myAttr;
+
+            myRoot = doc.CreateElement("UFUpdateConfig");
+            doc.AppendChild(myRoot);
+
+            myNode = doc.CreateElement("parameter");
+
+            myAttr = doc.CreateAttribute("param1");
+            myAttr.InnerText = textBox1.Text;
+            myNode.Attributes.Append(myAttr);
+            
+            myAttr = doc.CreateAttribute("param2");
+            myAttr.InnerText = textBox2.Text;
+            myNode.Attributes.Append(myAttr);
+
+            myRoot.AppendChild(myNode);
+
+            doc.Save("ufupdateconfig.xml");
+
         }
 
     }
