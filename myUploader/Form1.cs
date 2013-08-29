@@ -21,13 +21,24 @@ namespace myUploader
         private ContextMenu contextMenu = new ContextMenu();
         private string FtpFolder;
         private static string FtpFolderFull;
+        private FileVersionInfo fvi = null;
+
 
         public Form1()
         {
             InitializeComponent();
+
+
+            // NotifyIcon erzeugen
+            notico = new NotifyIcon();
+            notico.Icon = new Icon("c:\\temp\\dpk.ico"); // Eigenes Icon einsetzen
+            notico.DoubleClick += new EventHandler(NotifyIconDoubleClick);
+
             execute();
+
             // Automatischer Check alle x-Sekunden
-            timer1.Interval = 2000;
+            //timer1.Interval = 3600000; // Stunde
+            timer1.Interval = 20000; // 20 Sekunden
             timer1.Start();
             
         }
@@ -63,6 +74,40 @@ namespace myUploader
 
         private void execute()
         {
+            string unifaceVersion = null;
+            string line = null;
+            string pathToApplication = null;
+            FileInfo fi = null;
+
+            pathToApplication = "U:\\uniface\\bin\\uniface.exe";
+
+            try
+            {
+                fi = new FileInfo(pathToApplication);
+            }
+            catch 
+            {
+                MessageBox.Show("Application ' {0} ' not found!", pathToApplication);
+                notico.Dispose();
+                Application.Exit();
+            }
+
+            try
+            {
+                fvi = FileVersionInfo.GetVersionInfo(pathToApplication);
+            }
+            catch
+            {
+                MessageBox.Show("Application ' {0} ' not found!" , pathToApplication);
+                notico.Dispose();
+                Application.Exit();
+            }
+
+            unifaceVersion = fvi.ProductPrivatePart.ToString();
+            //notico.ShowBalloonTip(10, "Suche nach Updates", fi.Name+" (" + DateTime.Now.ToLocalTime() + ")", ToolTipIcon.Info);
+
+
+            // FTP Objekt
             ftpUpload fu = new ftpUpload();
 
             // FTP Einstellungen
@@ -72,41 +117,24 @@ namespace myUploader
             fu.Password = "anonymous@anon.de";
             FtpFolder = "pub/uniface/patches/9602/w32/";
 
-            // Dateiversion der Uniface-Exe scannen
-            FileVersionInfo fvi = null;
-            try
-            {
-                fvi = FileVersionInfo.GetVersionInfo("U:\\uniface\\bin\\uniface.exe");
-
-            }
-            catch
-            {
-                MessageBox.Show("Uniface.exe not found in current path!");
-                System.Environment.Exit(1);
-                   
-            }
-
-            string Uniface96Version = fvi.ProductPrivatePart.ToString();
-
             fu.initializeFTP(FtpFolder);
             fu.ftpListDirectory();
 
             // Den Stream mit den Dateinamen lesen und auseinander nehmen
-            StreamReader FtpDirList = fu.myStream;
+            StreamReader ftpDirList = fu.myStream;
 
-            string line;
-            while((line = FtpDirList.ReadLine()) != null)
+            while((line = ftpDirList.ReadLine()) != null)
             {
                 if (line.IndexOf(".exe") > 0)
                 {
                     // Nur nach EXE Dateien im Filestream schauen und darstellen
-                    string exeonly = line.Substring(line.IndexOf(".exe")-3,3);
-                    int x = Convert.ToInt32(exeonly);
-                    int y = Convert.ToInt32(Uniface96Version);
-                    if(Convert.ToInt32(exeonly) >= Convert.ToInt32(Uniface96Version))
+                    string exeOnly = line.Substring(line.IndexOf(".exe")-3,3);
+                    int x = Convert.ToInt32(exeOnly);
+                    int y = Convert.ToInt32(unifaceVersion);
+                    if (Convert.ToInt32(exeOnly) >= Convert.ToInt32(unifaceVersion))
                     {
                         // Dem Menü den Update-Punkt hinzufügen
-                        addMenu("Update Uniface 9.6.02: "+line,"line");
+                        addMenu(line+" ("+fi.Name+ " " +fvi.FileVersion+")","line");
                     }
                 }
             }
@@ -116,18 +144,15 @@ namespace myUploader
             addMenu("-", "sep");        // Seperator-Bar (Trennlinie)
             addMenu("Beenden", "exit"); // Das ist das Beenden Button im Contextmenu
 
-            // NotifyIcon erzeugen
-            // BallonTip als Test 
-            notico = new NotifyIcon();
-            notico.Icon = new Icon("c:\\temp\\dpk.ico"); // Eigenes Icon einsetzen
-
+            if (contextMenu.MenuItems.Count > 2) // Seperator + Beenden
+            {
+                notico.ShowBalloonTip(5, "Updates gefunden!", fi.Name+ " " +fvi.FileVersion+" ("+DateTime.Now.ToLocalTime().ToString()+")", ToolTipIcon.Info);
+            }
+            
             notico.Text = "Uniface Update Check";   // Eigenen Text einsetzen
             notico.Visible = true;
             notico.ContextMenu = contextMenu;
             
-            notico.ShowBalloonTip(5,"xx","Update-Check"+DateTime.Now.ToLocalTime(),ToolTipIcon.Info);
-
-            notico.DoubleClick += new EventHandler(NotifyIconDoubleClick);
 
         }
 
@@ -142,7 +167,7 @@ namespace myUploader
         private static void Action1Click(Object sender, EventArgs e)
         {
             string x = Convert.ToString(sender);
-            int start = x.IndexOf("Update Uniface 9.6.02: ") + 23;
+            int start = x.IndexOf("Text: ") + 6;
             int stop = x.IndexOf(".exe")+4;
             int diff = stop-start;
             string y = x.Substring(start, diff);
@@ -162,7 +187,7 @@ namespace myUploader
         /// <param name="e"></param>
         private void timer1_Tick(object sender, EventArgs e)
         {
-            contextMenu = null;
+            contextMenu.MenuItems.Clear();
             execute();
         }
 
