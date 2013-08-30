@@ -36,14 +36,14 @@ namespace myUploader
             notico.Icon = new Icon("c:\\temp\\dpk.ico"); // Eigenes Icon einsetzen
             notico.DoubleClick += new EventHandler(NotifyIconDoubleClick);
 
-            if (textBox1.Text != "" & textBox2.Text != "")
+            if (textBox1.Text == "" || textBox2.Text == "")
             {
-                execute();
-
-                timer1.Interval = Convert.ToInt32(textBox2.Text) * 60000; //Sekunden
-                timer1.Start();
+                return;
             }
-            
+
+            execute();
+
+            Form1.ActiveForm.WindowState = FormWindowState.Minimized;
         }
 
         /// <summary>
@@ -82,7 +82,20 @@ namespace myUploader
             string pathToApplication = null;
             FileInfo fi = null;
 
-            pathToApplication = textBox1.Text; //"U:\\uniface\\bin\\uniface.exe";
+            if(textBox1.Text == "" || textBox2.Text == "")
+            {
+                MessageBox.Show("Die Daten sind nicht komplett!");
+                return;
+            }
+
+            if(timer1.Interval.Equals(100))
+            {
+                timer1.Interval = Convert.ToInt32(textBox2.Text) * 60000; //Sekunden
+                timer1.Start();
+            }
+
+
+            pathToApplication = textBox1.Text;
 
             try
             {
@@ -192,6 +205,10 @@ namespace myUploader
             execute();
         }
 
+        /// <summary>
+        /// Config File einlesen und die Maske füllen
+        /// Wenn die Daten korrekt gelesen wurden, dann kann das Programm auch danach starten.
+        /// </summary>
         private void readConfigFile()
         {
 
@@ -215,6 +232,11 @@ namespace myUploader
             }
         }
 
+        /// <summary>
+        /// Applikation suchen und eintragen
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void button2_Click(object sender, EventArgs e)
         {
             openFileDialog1.Title = "Uniface Applikation suchen...";
@@ -225,6 +247,11 @@ namespace myUploader
             textBox1.Text = openFileDialog1.FileName;
         }
 
+        /// <summary>
+        /// Sichern der Einstellungen
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void button1_Click(object sender, EventArgs e)
         {
             if(textBox1.Text == "")
@@ -274,6 +301,15 @@ namespace myUploader
             myRoot.AppendChild(myNode);
 
             doc.Save("ufupdateconfig.xml");
+            Form1.ActiveForm.WindowState = FormWindowState.Minimized;
+            
+            timer1.Stop();
+            timer1.Interval = Convert.ToInt32(textBox2.Text) * 60000;
+            timer1.Start();
+            
+            execute();
+
+            
 
         }
 
